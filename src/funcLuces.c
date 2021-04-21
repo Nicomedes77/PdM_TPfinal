@@ -1,21 +1,22 @@
-/*
- * funcLuces.c
- *
- *  Created on: 16 abr. 2021
- *      Author: Nicolás Vargas ALice
- *      Descripción: Archivo .c con funciones referidas al manejo de luces led de la
- *      placa EDU-CIAA-NXP
- */
+/*=============================================================================
+ * Author: Nicolas Vargas Alice <nicolas.vargas.a@gmail.com>
+ * Date: 2021/04/16
+ *===========================================================================*/
+/*=============================================================================
+ * funcUART.c
+ * Declaración de variables e implementacion de funciones relacionadas a la
+ * ejecución de las secuencias de luces.
+ *===========================================================================*/
 
 #include "sapi.h"
 #include "funcUART.h"
 
-static 	uint8_t datoRecibido2;
-static	int i = 0;
-static 	bool_t primeraVez = TRUE;
+static 	uint8_t datoRecibido2;	//variable de lectura de dato recibido en UART
+static	int i = 0;				//indice para estructuras de control
+static 	bool_t primeraVez = TRUE;	//variable que indica si se va a comenzar o ya comenzó una secuencia.
 
-/* Variable de Retardo no bloqueante */
-delay_t delay1;
+
+delay_t delay1;	// Variable de Retardo no bloqueante
 
 static void apagaLuces(void){
 	gpioWrite(LEDB,OFF);
@@ -27,16 +28,16 @@ static void apagaLuces(void){
 static void prendeSec_N(uint8_t val){
 	switch(val){
 	case 'r':
-		gpioWrite(LED2,ON); //rojo
+		gpioWrite(LED2,ON); //LED rojo
 		break;
 	case 'a':
-		gpioWrite(LED1,ON); //amarillo
+		gpioWrite(LED1,ON); //LED amarillo
 		break;
 	case 'b':
-		gpioWrite(LEDB,ON); //azul
+		gpioWrite(LEDB,ON); //LED azul
 		break;
 	case 'v':
-		gpioWrite(LED3,ON); //verde
+		gpioWrite(LED3,ON); //LED verde
 		break;
 	default:
 		break;
@@ -44,94 +45,101 @@ static void prendeSec_N(uint8_t val){
 }
 
 void creaSec(bool_t sentido){
-		primeraVez = TRUE;
-		uint8_t sec_nueva[20];
-		uint8_t datoSecNueva;
-		i = 0;
-		int n_leds;
+	primeraVez = TRUE;
+	uint8_t sec_nueva[20];	//Array que almacena la secuencia enviada por UART.
+	uint8_t datoSecNueva;	//Variable que almacena dato recibido por UART.
+	i = 0;					//Inicialización de indice.
+	int n_leds;				//variable que almacena el largo de la secuencia enviada.
 
-		printf("Ingresando valores... \n");
-		printf(" \n");
+	printf("Ingresando valores... \n");
+	printf(" \n");
 
-		do{
-			//uartReadByte(UART_USB, &datoSecNueva);
-			while(!uartReadByte(UART_USB, &datoSecNueva)){}	// ESPERA UN COMANDO
-			if(datoSecNueva == 'r'){
-				sec_nueva[i] = datoSecNueva;
-				i++;
-			}
-			if(datoSecNueva == 'b'){
-				sec_nueva[i] = datoSecNueva;
-				i++;
-			}
-			if(datoSecNueva == 'v'){
-				sec_nueva[i] = datoSecNueva;
-				i++;
-			}
-			if(datoSecNueva == 'a'){
-				sec_nueva[i] = datoSecNueva;
-				i++;
-			}
-		}while(datoSecNueva != 'x');
+	do{
+		//uartReadByte(UART_USB, &datoSecNueva);
+		while(!uartReadByte(UART_USB, &datoSecNueva)){}	// ESPERA UN COMANDO
+		if(datoSecNueva == 'p'){
+			return;
+		}
+		if(datoSecNueva == 'r'){
+			sec_nueva[i] = datoSecNueva;
+			i++;
+		}
+		if(datoSecNueva == 'b'){
+			sec_nueva[i] = datoSecNueva;
+			i++;
+		}
+		if(datoSecNueva == 'v'){
+			sec_nueva[i] = datoSecNueva;
+			i++;
+		}
+		if(datoSecNueva == 'a'){
+			sec_nueva[i] = datoSecNueva;
+			i++;
+		}
+	}while(datoSecNueva != 'x');	//el caracter 'x' indica el fin de la secuencia enviada. Cuando se detecta, deja de leer UART.
 
 	printf("secuencia creada! \n");
+	printf(" \n");
+	msjSentidoSec();	//muestra información respecto al sentido de ejecución.
 	printf(" \n");
 	printf("ejecutando secuencia...\n");
 	printf(" \n");
 
-n_leds = i;
+	n_leds = i;			// a partir del valor del indice i en este punto, conozco el largo de la secuencia enviada.
 
-do{
-	if (delayRead(&delay1)){
-		apagaLuces();					//Apaga todas las luces
-		if(primeraVez == TRUE){
-			i = 0;
-			primeraVez = FALSE;
-		}
-
-		if(sentido == TRUE){			//sentido = FALSE
-			if(i == n_leds){
-				prendeSec_N(sec_nueva[i]);
+	do{
+		if (delayRead(&delay1)){
+			apagaLuces();					//Apaga todas las luces
+			if(primeraVez == TRUE){
 				i = 0;
+				primeraVez = FALSE;
 			}
-			else{
-				prendeSec_N(sec_nueva[i]);
-				i++;
+
+			if(sentido == TRUE){			//sentido = FALSE
+				if(i == n_leds){
+					prendeSec_N(sec_nueva[i]);
+					i = 0;
+				}
+				else{
+					prendeSec_N(sec_nueva[i]);
+					i++;
+				}
+			}
+			else{							//sentido = FALSE
+				if(i == 0){
+					prendeSec_N(sec_nueva[i]);
+					i = n_leds;
+				}
+				else{
+					prendeSec_N(sec_nueva[i]);
+					i--;
+				}
 			}
 		}
-		else{							//sentido = FALSE
-			if(i == 0){
-				prendeSec_N(sec_nueva[i]);
-				i = n_leds;
-			}
-			else{
-				prendeSec_N(sec_nueva[i]);
-				i--;
-			}
+
+		uartReadByte(UART_USB, &datoSecNueva);
+		if(datoSecNueva == 'a'){	// si recibo 'a', sentido ANTIHORARIO de ejecucion.
+			sentido = FALSE;
+		}
+		if(datoSecNueva == 'h'){ // si recibo 'h', sentido HORARIO de ejecucion.
+			sentido = TRUE;
 		}
 	}
+	while(datoSecNueva!= 'p');	// si recibo 'p', vuelve al estado inicial del sistema.
 
-	uartReadByte(UART_USB, &datoSecNueva);
-	if(datoSecNueva == 'a'){
-		sentido = FALSE;
+	//limpia el vector de almacenaje de la secuencia enviada
+	for(i = 0; i < n_leds; i++){
+		sec_nueva[i] = 0;
 	}
-	if(datoSecNueva == 'h'){
-		sentido = TRUE;
-	}
-}
-while(datoSecNueva!= 'p');
-
-for(i = 0; i < n_leds; i++){
-	sec_nueva[i] = 0;
-}
-primeraVez = TRUE;
-apagaLuces();					//Apaga todas las luces
-return;
+	primeraVez = TRUE;
+	apagaLuces();					//Apaga todas las luces
+	return;
 }
 
+//secuencia prefijada Nº1
 void haceSec1(bool_t sentido){
 	datoRecibido2 = 0;
-	gpioMap_t sec_led1[] = {LED2, LED1, LEDB, LED1};	//secuencia prefijada1
+	gpioMap_t sec_led1[] = {LED2, LED1, LEDB, LED1};
 	static uint8_t n_leds = sizeof(sec_led1)/sizeof(gpioMap_t);
 
 	do{
@@ -179,6 +187,7 @@ void haceSec1(bool_t sentido){
 	return;
 }
 
+//secuencia prefijada Nº2
 void haceSec2(bool_t sentido){
 	datoRecibido2 = 0;
 	gpioMap_t sec_led2[] = {LED3, LED2, LEDB, LED2};	//secuencia prefijada2
@@ -229,6 +238,7 @@ void haceSec2(bool_t sentido){
 	return;
 }
 
+//secuencia prefijada Nº3
 void haceSec3(bool_t sentido){
 	datoRecibido2 = 0;
 	gpioMap_t sec_led3[] = {LEDB, LED1, LED2, LED3};	//secuencia prefijada3
@@ -278,4 +288,3 @@ void haceSec3(bool_t sentido){
 	apagaLuces();					//Apaga todas las luces
 	return;
 }
-
